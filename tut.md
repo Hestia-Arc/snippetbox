@@ -126,3 +126,58 @@ There are two big benefits:
    administrative tasks in the future. With this structure, you could create this CLI application
    under cmd/cli and it will be able to import and reuse all the code you’ve written under
    the internal directory
+
+   7. HTML templating and inheritance
+
+   a. creating a template file
+   $ cd $HOME/code/snippetbox
+   $ mkdir ui/html/pages
+   $ touch ui/html/pages/home.tmpl
+
+   how do we get our home handler to render it?
+
+   - For this we need to use Go’s html/template package, which provides a family of functions for
+     safely parsing and rendering HTML templates. We can use the functions in this package to
+     parse the template file and then execute the template.
+
+restart the application:
+
+$ cd $HOME/code/snippetbox
+$ go run ./cmd/web
+2022/01/29 12:06:02 Starting server on :4000
+
+Then open http://localhost:4000 in your web browser. You should find that the HTML homepage is shaping up nicely
+
+=== Template composition ====
+
+As we add more pages to this web application there will be some shared, boilerplate, HTML
+markup that we want to include on every page — like the header, navigation and metadata
+inside the <head> HTML element.
+
+To save us typing and prevent duplication, it’s a good idea to create a base (or master)
+template which contains this shared content, which we can then compose with the page
+specific markup for the individual pages.
+
+create a new ui/html/base.tmpl file…
+$ touch ui/html/base.tmpl
+
+Here we’re using the {{define "base"}}...{{end}} action to define a distinct named
+template called base, which contains the content we want to appear on every page.
+Inside this we use the {{template "title" .}} and {{template "main" .}} actions to
+denote that we want to invoke other named templates (called title and main) at a particular
+point in the HTML.
+Note: If you’re wondering, the dot at the end of the {{template "title" .}} action
+represents any dynamic data that you want to pass to the invoked template.
+
+---
+
+So now, instead of containing HTML directly, our template set contains 3 named templates —
+base, title and main. We use the ExecuteTemplate() method to tell Go that we specifically
+want to respond using the content of the base template (which in turn invokes our title and
+main templates).
+
+Feel free to restart the server and give this a try. You should find that it renders the same
+output as before (although there will be some extra whitespace in the HTML source where the
+actions are)
+
+---

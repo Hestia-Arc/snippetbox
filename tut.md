@@ -249,3 +249,96 @@ get a 200 OK response with no body. If you want to do this for all directories u
 ./ui/static you can use the command:
 
 $ find ./ui/static -type d -exec touch {}/index.html \;
+
+9. The http.Handler interface
+
+Strictly speaking, what we mean by handler is an object which satisfies the http.Handler interface:
+
+type Handler interface {
+ServeHTTP(ResponseWriter, \*Request)
+}
+
+In simple terms, this basically means that to be a handler an object must have a ServeHTTP()
+method with the exact signature:
+
+ServeHTTP(http.ResponseWriter, \*http.Request)
+
+So in its simplest form a handler might look something like this:
+
+type home struct {}
+func (h *home) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+w.Write([]byte("This is my home page"))
+}
+
+Here we have an object (in this case it’s a home struct, but it could equally be a string or
+function or anything else), and we’ve implemented a method with the signature
+ServeHTTP(http.ResponseWriter, \*http.Request) on it. That’s all we need to make a handler.
+
+You could then register this with a servemux using the Handle method like so:
+
+mux := http.NewServeMux()
+mux.Handle("/", &home{})
+
+When this servemux receives a HTTP request for "/", it will then call the ServeHTTP() method
+of the home struct — which in turn writes the HTTP response.
+
+=== Handler functions ===
+
+Now, creating an object just so we can implement a ServeHTTP() method on it is long-winded
+and a bit confusing. Which is why in practice it’s far more common to write your handlers as a
+normal function (like we have been so far). For example:
+
+func home(w http.ResponseWriter, r \*http.Request) {
+w.Write([]byte("This is my home page"))
+}
+
+But this home function is just a normal function; it doesn’t have a ServeHTTP() method. So in
+itself it isn’t a handler.
+Instead we can transform it into a handler using the http.HandlerFunc() adapter, like so:
+
+mux := http.NewServeMux()
+mux.Handle("/", http.HandlerFunc(home))
+
+The http.HandlerFunc() adapter works by automatically adding a ServeHTTP() method to
+the home function. When executed, this ServeHTTP() method then simply calls the content of
+the original home function. It’s a roundabout but convenient way of coercing a normal function
+into satisfying the http.Handler interface.
+
+Throughout this project so far we’ve been using the HandleFunc() method to register our
+handler functions with the servemux. This is just some syntactic sugar that transforms a
+function to a handler and registers it in one step, instead of having to do it manually. The
+code above is functionality equivalent to this:
+
+mux := http.NewServeMux()
+mux.HandleFunc("/", home)
+
+=== Chaining handlers ===
+
+The eagle-eyed of you might have noticed something interesting right at the start of this
+project. The http.ListenAndServe() function takes a http.Handler object as the second
+parameter…
+
+func ListenAndServe(addr string, handler Handler) error
+
+… but we’ve been passing in a servemux.
+
+We were able to do this because the servemux also has a ServeHTTP() method, meaning that
+it too satisfies the http.Handler interface.
+
+For me it simplifies things to think of the servemux as just being a special kind of handler,
+which instead of providing a response itself passes the request on to a second handler. This
+isn’t as much of a leap as it might first sound. Chaining handlers together is a very common
+idiom in Go, and something that we’ll do a lot of later in this project.
+
+In fact, what exactly is happening is this: When our server receives a new HTTP request, it calls
+the servemux’s ServeHTTP() method. This looks up the relevant handler based on the
+request URL path, and in turn calls that handler’s ServeHTTP() method. You can think of a Go
+web application as a chain of ServeHTTP() methods being called one after another.
+
+=== Requests are handled concurrently ===
+
+There is one more thing that’s really important to point out: all incoming HTTP requests are
+served in their own goroutine. For busy servers, this means it’s very likely that the code in or
+called by your handlers will be running concurrently. While this helps make Go blazingly fast,
+the downside is that you need to be aware of (and protect against) race conditions when
+accessing shared resources from your handlers.

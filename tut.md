@@ -199,3 +199,53 @@ c. Finally, we need to update the home handler to include the new ui/html/partia
 file when parsing the template files
 
 d. Once you restart the server, the base template should now invoke the nav template.
+
+8. Serving static files
+
+- Now let’s improve the look and feel of the home page by adding some static CSS and image
+  files to our project,
+- along with a tiny bit of JavaScript to highlight the active navigation item.
+
+you can grab the necessary files and extract them into the
+ui/static folder that we made earlier with the following commands:
+
+$ cd $HOME/code/snippetbox
+$ curl https://www.alexedwards.net/static/sb-v2.tar.gz | tar -xvz -C ./ui/static/
+
+=== The http.Fileserver handler ===
+
+- Go’s net/http package ships with a built-in http.FileServer handler which you can use to
+  serve files over HTTP from a specific directory.
+- Let’s add a new route to our application so that
+  all requests which begin with "/static/" are handled using this.
+
+- Remember: The pattern "/static/" is a subtree path pattern, so it acts a bit like there
+  is a wildcard at the end.
+
+- To create a new http.FileServer handler, we need to use the http.FileServer() function
+  like this:
+
+  fileServer := http.FileServer(http.Dir("./ui/static/"))
+
+  - When this handler receives a request, it will remove the leading slash from the URL path and
+    then search the ./ui/static directory for the corresponding file to send to the user.
+  - So, for this to work correctly, we must strip the leading "/static" from the URL path before
+    passing it to http.FileServer. Otherwise it will be looking for a file which doesn’t exist and
+    the user will receive a 404 page not found response. Fortunately Go includes a
+    http.StripPrefix() helper specifically for this task.
+
+Go’s file server has a few really nice features that are worth mentioning:
+
+- It sanitizes all request paths by running them through the path.Clean() function before
+  searching for a file. This removes any . and .. elements from the URL path, which helps to
+  stop directory traversal attacks. This feature is particularly useful if you’re using the
+  fileserver in conjunction with a router that doesn’t automatically sanitize URL paths.
+
+Disabling directory listings
+If you want to disable directory listings there are a few different approaches you can take.
+The simplest way? Add a blank index.html file to the specific directory that you want to
+disable listings for. This will then be served instead of the directory listing, and the user will
+get a 200 OK response with no body. If you want to do this for all directories under
+./ui/static you can use the command:
+
+$ find ./ui/static -type d -exec touch {}/index.html \;

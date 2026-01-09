@@ -134,7 +134,7 @@ There are two big benefits:
    $ mkdir ui/html/pages
    $ touch ui/html/pages/home.tmpl
 
-   how do we get our home handler to render it?
+   b. how do we get our home handler to render it?
 
    - For this we need to use Go’s html/template package, which provides a family of functions for
      safely parsing and rendering HTML templates. We can use the functions in this package to
@@ -161,13 +161,13 @@ specific markup for the individual pages.
 create a new ui/html/base.tmpl file…
 $ touch ui/html/base.tmpl
 
-Here we’re using the {{define "base"}}...{{end}} action to define a distinct named
-template called base, which contains the content we want to appear on every page.
-Inside this we use the {{template "title" .}} and {{template "main" .}} actions to
-denote that we want to invoke other named templates (called title and main) at a particular
-point in the HTML.
-Note: If you’re wondering, the dot at the end of the {{template "title" .}} action
-represents any dynamic data that you want to pass to the invoked template.
+- Here we’re using the {{define "base"}}...{{end}} action to define a distinct named
+  template called base, which contains the content we want to appear on every page.
+- Inside this we use the {{template "title" .}} and {{template "main" .}} actions to
+  denote that we want to invoke other named templates (called title and main) at a particular
+  point in the HTML.
+  Note: If you’re wondering, the dot at the end of the {{template "title" .}} action
+  represents any dynamic data that you want to pass to the invoked template.
 
 ---
 
@@ -181,3 +181,21 @@ output as before (although there will be some extra whitespace in the HTML sourc
 actions are)
 
 ---
+
+=== Embedding partials (reusable component) ===
+
+For some applications you might want to break out certain bits of HTML into partials that can
+be reused in different pages or layouts. To illustrate, let’s create a partial containing the
+primary navigation bar for our web application
+
+a. Create a new ui/html/partials/nav.tmpl file containing a named template called "nav"
+$ mkdir ui/html/partials
+$ touch ui/html/partials/nav.tmpl
+
+b. Then update the base template so that it invokes the navigation partial using the
+{{template "nav" .}} action.
+
+c. Finally, we need to update the home handler to include the new ui/html/partials/nav.tmpl
+file when parsing the template files
+
+d. Once you restart the server, the base template should now invoke the nav template.

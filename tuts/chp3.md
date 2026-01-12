@@ -121,3 +121,34 @@ $ go run ./cmd/web >>/tmp/info.log 2>>/tmp/error.log
 
 Note: Using the double arrow >> will append to an existing file, instead of truncating it
 when starting the application.
+
+=== The http.Server error log ===
+
+There is one more change we need to make to our application. By default, if Go’s HTTP server
+encounters an error it will log it using the standard logger. For consistency it’d be better to
+use our new errorLog logger instead.
+
+To make this happen we need to initialize a new http.Server struct containing the
+configuration settings for our server, instead of using the http.ListenAndServe() shortcut.
+
+=== Concurrent logging ===
+
+Custom loggers created by log.New() are concurrency-safe. You can share a single logger and
+use it across multiple goroutines and in your handlers without needing to worry about race
+conditions.
+That said, if you have multiple loggers writing to the same destination then you need to be
+careful and ensure that the destination’s underlying Write() method is also safe for
+concurrent use.
+
+=== Logging to a file ===
+
+As I said above, my general recommendation is to log your output to standard streams and
+redirect the output to a file at runtime. But if you don’t want to do this, you can always open a
+file in Go and use it as your log destination. As a rough example:
+
+f, err := os.OpenFile("/tmp/info.log", os.O_RDWR|os.O_CREATE, 0666)
+if err != nil {
+log.Fatal(err)
+}
+defer f.Close()
+infoLog := log.New(f, "INFO\t", log.Ldate|log.Ltime)

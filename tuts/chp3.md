@@ -223,3 +223,55 @@ return
 ...
 }
 }
+
+4. Centralized error handling
+
+Let’s neaten up our application by moving some of the error handling code into helper
+methods. This will help:
+
+- separate our concerns and
+- stop us repeating code as we progress through the build.
+
+Add a new helpers.go file under the cmd/web directory:
+
+$ cd $HOME/code/snippetbox
+$ touch cmd/web/helpers.go
+
+There’s not a huge amount of new code here, but it does introduce a couple of features which
+are worth discussing.
+
+- In the serverError() helper we use the debug.Stack() function to get a stack trace for the
+  current goroutine and append it to the log message. Being able to see the execution path
+  of the application via the stack trace can be helpful when you’re trying to debug errors.
+
+- In the clientError() helper we use the http.StatusText() function to automatically
+  generate a human-friendly text representation of a given HTTP status code. For example,
+  http.StatusText(400) will return the string "Bad Request".
+  Once that’s done, head back to your handlers.go file and update it to use the new helpers.
+
+When that’s updated, restart your application and make a request to http://localhost:4000
+in your browser.
+
+Again, this should result in our (deliberate) error being raised and you should see the
+corresponding error message and stack trace in your terminal.
+
+---
+
+If you look closely at this you’ll notice a small problem: the file name and line number being
+reported in the ERROR log line is now helpers.go:13 — because this is where the log message
+is now being written from.
+What we want to report is the file name and line number one step back in the stack trace,
+which would give us a clearer idea of where the error actually originated from.
+We can do this by changing the serverError() helper to use our logger’s Output() function
+and setting the frame depth to 2. Reopen your helpers.go file and update:
+
+    app.errorLog.Output(2, trace)
+
+And if you try again now, you should find that the appropriate file name and line number
+(handlers.go:25) is being reported in the ERROR log line
+
+---
+
+Revert the deliberate error
+
+$ mv ui/html/pages/home.bak ui/html/pages/home.tmp

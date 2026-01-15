@@ -152,3 +152,74 @@ log.Fatal(err)
 }
 defer f.Close()
 infoLog := log.New(f, "INFO\t", log.Ldate|log.Ltime)
+
+3. Dependency injection
+
+You’ll notice that the home handler function is still writing error messages
+using Go’s standard logger, not the errorLog logger that we want to be using.
+
+This raises a good question: how can we make our new errorLog logger available to our home
+function from main()?
+And this question generalizes further. Most web applications will have multiple dependencies
+that their handlers need to access, such as a database connection pool, centralized error
+handlers, and template caches. What we really want to answer is: how can we make any
+dependency available to our handlers?
+
+The simplest being to just put the dependencies in
+global variables. But in general, it is good practice to inject dependencies into your handlers. It
+makes your code more explicit, less error-prone and easier to unit test than if you use global
+variables.
+For applications where all your handlers are in the same package, like ours, a neat way to
+inject dependencies is to put them into a custom application struct, and then define your
+handler functions as methods against application.
+
+Let’s try this out by quickly adding a deliberate error to our application.
+
+Open your terminal and rename the ui/html/pages/home.tmpl to ui/html/pages/home.bak.
+When we run our application and make a request for the home page, this now should result in
+an error because the ui/html/pages/home.tmpl no longer exists.
+Go ahead and make the change:
+
+$ cd $HOME/code/snippetbox
+$ mv ui/html/pages/home.tmpl ui/html/pages/home.bak
+
+Then run the application and make a request to http://localhost:4000. You should get an
+Internal Server Error HTTP response in your browser, and see a corresponding error
+message in your terminal similar to this:
+
+$ go run ./cmd/web
+INFO  
+2022/01/29 16:12:36 Starting server on :4000
+ERROR  
+2022/01/29 16:12:40 handlers.go:29: open ./ui/html/pages/home.tmpl: no such file or directory
+
+Notice how the log message is now prefixed with ERROR and originated from line 25 of the
+handlers.go file? This demonstrates nicely that our custom errorLog logger is being passed
+through to our home handler as a dependency, and is working as expected.
+
+=== Closures for dependency injection ===
+
+The pattern that we’re using to inject dependencies won’t work if your handlers are spread
+across multiple packages. In that case, an alternative approach is to create a config package
+exporting an Application struct and have your handler functions close over this to form a
+closure. Very roughly:
+
+func main() {
+app := &config.Application{
+ErrorLog: log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+}
+mux.Handle("/", examplePackage.ExampleHandler(app))
+}
+
+func ExampleHandler(app *config.Application) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+...
+ts, err := template.ParseFiles(files...)
+if err != nil {
+app.ErrorLog.Println(err.Error())
+http.Error(w, "Internal Server Error", 500)
+return
+}
+...
+}
+}

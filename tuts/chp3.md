@@ -275,3 +275,19 @@ And if you try again now, you should find that the appropriate file name and lin
 Revert the deliberate error
 
 $ mv ui/html/pages/home.bak ui/html/pages/home.tmp
+
+5. Isolating the application routes
+
+Our main() function is beginning to get a bit crowded, so to keep it clear and focused let's
+move the route declarations for the application into a standalone routes.go file.
+
+$ cd $HOME/code/snippetbox
+$ touch cmd/web/routes.go
+
+Then update the main.go file to use the route.
+The routes for our application are now isolated and encapsulated in
+the app.routes() method, and the responsibilities of our main() function are limited to:
+
+- Parsing the runtime configuration settings for the application;
+- Establishing the dependencies for the handlers; and
+- Running the HTTP server.
